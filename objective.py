@@ -57,6 +57,7 @@ def add_contrastive_loss(hidden,
   batch_size = tf.shape(hidden1)[0]
 
   # Gather hidden1/hidden2 across replicas and create local labels.
+  # ここが並列デバイス間の統合をするところなんだろうけど理解はしてない。GPUも含まれるのかは謎。
   if tpu_context is not None:
     hidden1_large = tpu_cross_replica_concat(hidden1, tpu_context)
     hidden2_large = tpu_cross_replica_concat(hidden2, tpu_context)
@@ -72,13 +73,16 @@ def add_contrastive_loss(hidden,
     labels = tf.one_hot(tf.range(batch_size), batch_size * 2)
     masks = tf.one_hot(tf.range(batch_size), batch_size)
 
+  # (batch_size, batch_size)
   logits_aa = tf.matmul(hidden1, hidden1_large, transpose_b=True) / temperature
+  # maskで同じサンプルは消してるのか
   logits_aa = logits_aa - masks * LARGE_NUM
   logits_bb = tf.matmul(hidden2, hidden2_large, transpose_b=True) / temperature
   logits_bb = logits_bb - masks * LARGE_NUM
   logits_ab = tf.matmul(hidden1, hidden2_large, transpose_b=True) / temperature
   logits_ba = tf.matmul(hidden2, hidden1_large, transpose_b=True) / temperature
 
+  # (batch_size, batch_size * 2)
   loss_a = tf.losses.softmax_cross_entropy(
       labels, tf.concat([logits_ab, logits_aa], 1), weights=weights)
   loss_b = tf.losses.softmax_cross_entropy(

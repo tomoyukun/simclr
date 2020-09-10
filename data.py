@@ -121,6 +121,7 @@ def build_input_fn(builder, is_training):
       """Produces multiple transformations of the same batch."""
       if FLAGS.train_mode == 'pretrain':
         xs = []
+        # ここかあ。
         for _ in range(2):  # Two transformations
           xs.append(preprocess_fn_pretrain(image))
         image = tf.concat(xs, -1)

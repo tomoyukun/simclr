@@ -34,11 +34,17 @@ FLAGS = flags.FLAGS
 def build_model_fn(model, num_classes, num_train_examples):
   """Build model function."""
   def model_fn(features, labels, mode, params=None):
-    """Build model and optimizer."""
+    """Build model and optimizer.
+    features: 入力（画像）だと思われる
+    labels:
+    mode: pretrainとかfine-tuneとか
+    params: 
+    """
     is_training = mode == tf.estimator.ModeKeys.TRAIN
 
     # Check training mode.
     if FLAGS.train_mode == 'pretrain':
+      # これが同じサンプルに対して施す変換の数ね
       num_transforms = 2
       if FLAGS.fine_tune_after_block > -1:
         raise ValueError('Does not support layer freezing during pretraining,'
@@ -49,6 +55,9 @@ def build_model_fn(model, num_classes, num_train_examples):
       raise ValueError('Unknown train_mode {}'.format(FLAGS.train_mode))
 
     # Split channels, and optionally apply extra batched augmentation.
+    # featuresは元々# (num_transforms * bsz, h, w, c)になってる？
+    # だとしたら、featuresを分割して、バッチ単位のaugmentationを欠けたあと、元に戻してるだけ？
+    # -> そうだった
     features_list = tf.split(
         features, num_or_size_splits=num_transforms, axis=-1)
     if FLAGS.use_blur and is_training and FLAGS.train_mode == 'pretrain':
